@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: logger
+      POSTGRES_PASSWORD: logger
+      POSTGRES_DB: logger
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logger -d logger"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  logger:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://logger:logger@postgres:5432/logger?sslmode=disable
+      LOGGER_AUTH_TOKEN: dev-token
+      LISTEN_BIND_ADDRESS: 0.0.0.0
+    ports:
+      - "7443:7443"
+      - "8443:8443"
+      - "8444:8444"
+    volumes:
+      - logger-data:/data
+
+volumes:
+  logger-data:

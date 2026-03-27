@@ -1,0 +1,220 @@
+openapi: 3.0.3
+info:
+  title: Go Logger HTTPS API
+  version: 0.1.0
+  description: |
+    JSON over HTTPS, aligned with `api/logger/v1/logger.proto`. Bearer auth matches gRPC metadata.
+servers:
+  - url: https://localhost:8443
+paths:
+  /api/v1/health:
+    get:
+      summary: Liveness
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/ingest/batch:
+    post:
+      summary: Ingest a batch (all-or-nothing, idempotent on log_id)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestBatchRequest"
+      responses:
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestBatchResponse"
+        "400":
+          description: Invalid argument
+        "401":
+          description: Unauthorized
+        "413":
+          description: Metadata too large
+  /api/v1/logs:
+    get:
+      summary: List logs (query parameters)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: application_name
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: page_token
+          schema:
+            type: string
+        - in: query
+          name: session_id
+          schema:
+            type: string
+        - in: query
+          name: message_regex
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListLogsResponse"
+    delete:
+      summary: Delete logs by JSON criteria
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryFilter"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteLogsResponse"
+  /api/v1/logs/query:
+    post:
+      summary: List logs (JSON filters)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryFilter"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListLogsResponse"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+    LogRecord:
+      type: object
+      properties:
+        log_id:
+          type: string
+        record_kind:
+          type: string
+          enum: [operational, analytics]
+        analytics_event_name:
+          type: string
+        user_actor_id:
+          type: string
+        source:
+          type: string
+        source_environment:
+          type: string
+        session_id:
+          type: string
+        application_name:
+          type: string
+        log_message:
+          type: string
+        metadata_json:
+          type: string
+          format: byte
+        event_timestamp:
+          type: string
+        log_level:
+          type: string
+        trace_id:
+          type: string
+        span_id:
+          type: string
+    IngestBatchRequest:
+      type: object
+      required: [application_name, records]
+      properties:
+        application_name:
+          type: string
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/LogRecord"
+    IngestBatchResponse:
+      type: object
+      properties:
+        accepted_count:
+          type: integer
+        batch_id:
+          type: string
+    QueryFilter:
+      type: object
+      required: [application_name]
+      properties:
+        application_name:
+          type: string
+        log_ids:
+          type: array
+          items:
+            type: string
+        record_kinds:
+          type: array
+          items:
+            type: string
+        analytics_event_name_exact:
+          type: string
+        analytics_event_name_prefix:
+          type: string
+        time_start_rfc3339:
+          type: string
+        time_end_rfc3339:
+          type: string
+        session_id:
+          type: string
+        user_actor_id:
+          type: string
+        message_regex:
+          type: string
+        log_levels:
+          type: array
+          items:
+            type: string
+        limit:
+          type: integer
+        page_token:
+          type: string
+    ListLogsResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/LogRecord"
+        next_page_token:
+          type: string
+    DeleteLogsResponse:
+      type: object
+      properties:
+        deleted_count:
+          type: integer

@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package logger.v1;
+
+// Multi-tenancy: application_name is the tenant key. IngestBatchRequest.application_name must be
+// non-empty; every LogRecord.application_name in the batch must equal it or the server returns
+// InvalidArgument and performs no writes.
+//
+// Idempotency: duplicate log_id values already stored for the same application_name are skipped
+// (OK, accepted_count counts only newly inserted rows). Duplicate log_id within a single batch is
+// InvalidArgument before any database access.
+
+option go_package = "github.com/joshuabednaz/go-logger/gen/go/logger/v1;loggerv1";
+
+service LoggerService {
+  rpc IngestBatch(IngestBatchRequest) returns (IngestBatchResponse);
+  rpc ListLogs(ListLogsRequest) returns (ListLogsResponse);
+  rpc DeleteLogs(DeleteLogsRequest) returns (DeleteLogsResponse);
+}
+
+enum RecordKind {
+  RECORD_KIND_UNSPECIFIED = 0;
+  RECORD_KIND_OPERATIONAL = 1;
+  RECORD_KIND_ANALYTICS = 2;
+}
+
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_TRACE = 1;
+  LOG_LEVEL_DEBUG = 2;
+  LOG_LEVEL_INFO = 3;
+  LOG_LEVEL_WARN = 4;
+  LOG_LEVEL_ERROR = 5;
+  LOG_LEVEL_FATAL = 6;
+}
+
+message LogRecord {
+  string log_id = 1;
+  RecordKind record_kind = 2;
+  string analytics_event_name = 3;
+  string user_actor_id = 4;
+  string source = 5;
+  string source_environment = 6;
+  string session_id = 7;
+  string application_name = 8;
+  string log_message = 9;
+  bytes metadata_json = 10;
+  string event_timestamp = 11;
+  LogLevel log_level = 12;
+  string trace_id = 13;
+  string span_id = 14;
+}
+
+message IngestBatchRequest {
+  string application_name = 1;
+  repeated LogRecord records = 2;
+}
+
+message IngestBatchResponse {
+  uint32 accepted_count = 1;
+  string batch_id = 2;
+}
+
+message ListLogsRequest {
+  string application_name = 1;
+  repeated string log_ids = 2;
+  repeated RecordKind record_kinds = 3;
+  string analytics_event_name_exact = 4;
+  string analytics_event_name_prefix = 5;
+  string time_start_rfc3339 = 6;
+  string time_end_rfc3339 = 7;
+  string session_id = 8;
+  string user_actor_id = 9;
+  string message_regex = 10;
+  repeated LogLevel log_levels = 11;
+  uint32 limit = 12;
+  string page_token = 13;
+}
+
+message ListLogsResponse {
+  repeated LogRecord records = 1;
+  string next_page_token = 2;
+}
+
+message DeleteLogsRequest {
+  string application_name = 1;
+  repeated string log_ids = 2;
+  repeated RecordKind record_kinds = 3;
+  string analytics_event_name_exact = 4;
+  string analytics_event_name_prefix = 5;
+  string time_start_rfc3339 = 6;
+  string time_end_rfc3339 = 7;
+  string session_id = 8;
+  string user_actor_id = 9;
+  string message_regex = 10;
+  repeated LogLevel log_levels = 11;
+}
+
+message DeleteLogsResponse {
+  uint64 deleted_count = 1;
+}

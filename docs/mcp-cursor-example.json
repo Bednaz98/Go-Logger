@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "go-logger": {
+      "command": "go",
+      "args": ["run", "github.com/joshuabednaz/go-logger/cmd/mcp"],
+      "env": {
+        "DATABASE_URL": "file:/absolute/path/to/logger.db?cache=shared",
+        "MCP_ENABLE_DELETE_LOGS": "false"
+      }
+    }
+  }
+}
