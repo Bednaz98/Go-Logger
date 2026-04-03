@@ -11,8 +11,14 @@ import (
 // Options configures the client SDK.
 type Options struct {
 	ApplicationName string
-	GRPCAddress     string
-	BearerToken     string
+	// GRPCAddress is the remote gRPC target as host:port (e.g. localhost:7443).
+	GRPCAddress string
+	// RemoteURL optionally overrides GRPCAddress when non-empty. Use host:port or grpc:// / grpcs://host:port
+	// (scheme selects parsing only; TLS still comes from TLSCAPEM / InsecureSkipVerify).
+	RemoteURL string
+	// DisableRemote, when true, skips the gRPC connection and never uploads; Log/Track still append locally.
+	DisableRemote bool
+	BearerToken   string
 
 	TLSCAPEM           []byte
 	InsecureSkipVerify bool
@@ -55,7 +61,7 @@ func (o *Options) applyDefaults() {
 	}
 }
 
-// Client batches local records and uploads them via gRPC.
+// Client batches local records and uploads them via gRPC when DisableRemote is false.
 type Client struct {
 	store LocalLogStore
 	opts  Options
@@ -75,12 +81,23 @@ func NewClient(store LocalLogStore, opts Options) (*Client, error) {
 		return nil, errNilStore
 	}
 	opts.applyDefaults()
-	tr, err := newGRPCTransport(opts.GRPCAddress, opts.BearerToken, dialTLSConfig{
-		CAPEM:              opts.TLSCAPEM,
-		InsecureSkipVerify: opts.InsecureSkipVerify,
-	})
-	if err != nil {
-		return nil, err
+	var tr *grpcTransport
+	if !opts.DisableRemote {
+		target, terr := grpcDialTarget(opts.GRPCAddress, opts.RemoteURL)
+		if terr != nil {
+			return nil, terr
+		}
+		if target == "" {
+			return nil, ErrNoRemoteTarget
+		}
+		var err error
+		tr, err = newGRPCTransport(target, opts.BearerToken, dialTLSConfig{
+			CAPEM:              opts.TLSCAPEM,
+			InsecureSkipVerify: opts.InsecureSkipVerify,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &Client{
@@ -99,6 +116,9 @@ func NewClient(store LocalLogStore, opts Options) (*Client, error) {
 func (c *Client) Close() error {
 	c.cancel()
 	c.wg.Wait()
+	if c.transport == nil {
+		return nil
+	}
 	return c.transport.Close()
 }
 

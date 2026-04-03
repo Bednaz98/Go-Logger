@@ -137,11 +137,14 @@ Phased build checklist with **concrete files** (paths relative to repo root). Re
 | ---- | ------- |
 | `pkg/logger/types.go` | `LocalRecord` struct (fields per spec). |
 | `pkg/logger/local_store.go` | `LocalLogStore` **interface** definition. |
-| `pkg/logger/client.go` | `Client` / `Logger` with `Log`, `Track`, options, `application_name`. |
+| `pkg/logger/client.go` | `Client` with `NewClient`, `Log`, `Track`, `Flush`, `Close`, `Options`. |
+| `pkg/logger/default_client.go` | Optional package default: `Init`, `Default`, package-level `Log` / `Track` / `Flush` / `SetAnalyticsEnabled` / `Close`. |
+| `pkg/logger/errors.go` | Sentinel errors (`ErrNilClient`, etc.). |
 | `pkg/logger/sync.go` | Background loop: `CountUnsent`, `OldestUnsentAge`, `ListUnsent`, upload, `MarkSent`, `DeleteSyncedOlderThan`. |
 | `pkg/logger/grpc_transport.go` | Build `IngestBatchRequest`, call gRPC, handle TLS for dev. |
+| `internal/grpcutil/target.go` | Shared `ParseDialTarget` for `host:port` / `grpc://` / `grpcs://` (SDK + MCP remote). |
 | `pkg/sqllogstore/store.go` | Reference **`LocalLogStore`**: payload + outbox (`queued_at`, `server_acked_at`). |
-| `pkg/logger/client_test.go` | Tests with fake store and/or sqllogstore + mock server. |
+| `pkg/logger/*_test.go` | Tests: fake store, `Init` / default client lifecycle, optional mock gRPC server. |
 
 ### Steps
 

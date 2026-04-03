@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	loggerv1 "github.com/joshuabednaz/go-logger/gen/go/logger/v1"
 	"github.com/joshuabednaz/go-logger/internal/config"
 	grpcserver "github.com/joshuabednaz/go-logger/internal/server/grpc"
 	"github.com/joshuabednaz/go-logger/internal/store"
@@ -24,15 +23,10 @@ func HandleIngestBatch(dep IngestDeps) http.HandlerFunc {
 			WriteProblem(w, http.StatusBadRequest, "invalid_json", "could not decode body")
 			return
 		}
-		app := strings.TrimSpace(body.ApplicationName)
-		protos := make([]*loggerv1.LogRecord, 0, len(body.Records))
-		for i := range body.Records {
-			p, err := jsonRecordToProto(&body.Records[i])
-			if err != nil {
-				WriteProblem(w, http.StatusBadRequest, "invalid_argument", err.Error())
-				return
-			}
-			protos = append(protos, p)
+		app, protos, err := IngestBatchBodyToProtos(&body)
+		if err != nil {
+			WriteProblem(w, http.StatusBadRequest, "invalid_argument", err.Error())
+			return
 		}
 		maxMeta := dep.Config.MaxMetadataBytes
 		if maxMeta <= 0 {

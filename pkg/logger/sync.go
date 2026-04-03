@@ -29,6 +29,9 @@ func (c *Client) tick(ctx context.Context) error {
 }
 
 func (c *Client) maybeUpload(ctx context.Context) error {
+	if c.opts.DisableRemote || c.transport == nil {
+		return nil
+	}
 	n, err := c.store.CountUnsent(ctx)
 	if err != nil {
 		return err
@@ -50,6 +53,9 @@ func (c *Client) maybeUpload(ctx context.Context) error {
 }
 
 func (c *Client) uploadPending(ctx context.Context) error {
+	if c.opts.DisableRemote || c.transport == nil {
+		return nil
+	}
 	backoff := 200 * time.Millisecond
 	const maxBackoff = 10 * time.Second
 	transientAttempts := 0

@@ -1,6 +1,9 @@
 package config
 
-import "strings"
+import (
+	"os"
+	"strings"
+)
 
 // Server holds runtime configuration for the logger server process.
 type Server struct {
@@ -24,6 +27,15 @@ type Server struct {
 	MaxGRPCSendBytes int
 
 	MCPEnableDeleteLogs bool
+
+	// MCPRemote* configures optional forwarding of MCP ingest_batch to another LoggerService (stdio or HTTP MCP).
+	MCPRemoteGRPCAddress        string
+	MCPRemoteSending            bool
+	MCPRemoteBearerToken        string
+	MCPRemoteTLSCAPath          string
+	MCPRemoteInsecureSkipVerify bool
+	// MCPRemoteStrict, when true, makes invalid remote ingest config fatal at startup instead of disabling forward only.
+	MCPRemoteStrict bool
 }
 
 type TLSConfig struct {
@@ -38,6 +50,7 @@ type TLSConfig struct {
 }
 
 func LoadServerFromEnv() Server {
+	mcpRemoteGRPC := getenv("MCP_REMOTE_GRPC_ADDRESS", "")
 	return Server{
 		DatabaseURL: getenv("DATABASE_URL", "file:logger.db?cache=shared"),
 
@@ -66,7 +79,33 @@ func LoadServerFromEnv() Server {
 		MaxGRPCSendBytes: getenvInt("LOGGER_GRPC_MAX_SEND_BYTES", 4*1024*1024),
 
 		MCPEnableDeleteLogs: getenvBool("MCP_ENABLE_DELETE_LOGS", false),
+
+		MCPRemoteGRPCAddress:        mcpRemoteGRPC,
+		MCPRemoteSending:            mcpRemoteSendingFromEnv(mcpRemoteGRPC),
+		MCPRemoteBearerToken:        firstNonEmpty(getenv("MCP_REMOTE_BEARER_TOKEN", ""), getenv("LOGGER_AUTH_TOKEN", "")),
+		MCPRemoteTLSCAPath:          getenv("MCP_REMOTE_TLS_CA_PATH", ""),
+		MCPRemoteInsecureSkipVerify: getenvBool("MCP_REMOTE_INSECURE_SKIP_VERIFY", false),
+		MCPRemoteStrict:             getenvBool("MCP_REMOTE_STRICT", false),
 	}
+}
+
+func mcpRemoteSendingFromEnv(grpcAddr string) bool {
+	if strings.TrimSpace(grpcAddr) == "" {
+		return false
+	}
+	v := strings.TrimSpace(os.Getenv("MCP_REMOTE_SENDING"))
+	if v == "" {
+		return true
+	}
+	return getenvBool("MCP_REMOTE_SENDING", false)
+}
+
+func firstNonEmpty(a, b string) string {
+	a, b = strings.TrimSpace(a), strings.TrimSpace(b)
+	if a != "" {
+		return a
+	}
+	return b
 }
 
 func splitComma(s string) []string {

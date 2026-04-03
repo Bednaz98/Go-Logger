@@ -10,6 +10,23 @@ import (
 	"github.com/joshuabednaz/go-logger/internal/store"
 )
 
+// IngestBatchBodyToProtos converts the shared JSON ingest batch shape (HTTPS POST /api/v1/ingest/batch, MCP ingest_batch) to protobuf records.
+func IngestBatchBodyToProtos(body *IngestBatchBody) (applicationName string, protos []*loggerv1.LogRecord, err error) {
+	if body == nil {
+		return "", nil, fmt.Errorf("nil body")
+	}
+	app := strings.TrimSpace(body.ApplicationName)
+	protos = make([]*loggerv1.LogRecord, 0, len(body.Records))
+	for i := range body.Records {
+		p, err := jsonRecordToProto(&body.Records[i])
+		if err != nil {
+			return "", nil, err
+		}
+		protos = append(protos, p)
+	}
+	return app, protos, nil
+}
+
 func jsonRecordToProto(j *LogRecordJSON) (*loggerv1.LogRecord, error) {
 	if j == nil {
 		return nil, fmt.Errorf("nil record")

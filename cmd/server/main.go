@@ -78,7 +78,25 @@ func main() {
 
 	var mcpSrv *http.Server
 	if cfg.MCPHTTPListen {
-		mcpImpl := mcpmod.NewMCPServer(repo, mcpmod.ToolConfig{EnableDeleteLogs: cfg.MCPEnableDeleteLogs})
+		mcpRemote, err := mcpmod.OpenRemoteIngest(cfg)
+		if err != nil {
+			if cfg.MCPRemoteStrict {
+				slog.Error("mcp remote ingest", "error", err)
+				os.Exit(1)
+			}
+			slog.Warn("mcp remote forward disabled due to config error", "error", err)
+			mcpRemote = nil
+		}
+		if mcpRemote != nil {
+			defer func() { _ = mcpRemote.Close() }()
+			slog.Info("mcp remote forward enabled", "grpc", cfg.MCPRemoteGRPCAddress)
+		}
+		mcpImpl := mcpmod.NewMCPServer(repo, mcpmod.ToolConfig{
+			EnableDeleteLogs:     cfg.MCPEnableDeleteLogs,
+			MaxMetadataBytes:     cfg.MaxMetadataBytes,
+			EnforceMetadataLimit: cfg.EnforceMetadataLimit,
+			RemoteIngest:         mcpRemote,
+		})
 		h := mcpmod.StreamableHTTPHandler(mcpImpl, cfg)
 		mcpAddr := listenAddr(cfg.ListenBindAddress, cfg.MCPHTTPPort)
 		mcpSrv = &http.Server{

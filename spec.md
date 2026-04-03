@@ -272,7 +272,7 @@ type LocalLogStore interface {
 - **`Append`:** Prefer **idempotency on `log id`** so SDK retries do not duplicate rows; otherwise return an error.
 - **`MarkSent`:** Only called after the server accepts the **entire** batch (**all-or-nothing**); update **`server_acked_at`** (or equivalent) for **all** ids in that batch together.
 - **Schema and migrations** are the **parent’s** responsibility; the repo may ship a **reference SQL** for SQLite.
-- **Construction:** e.g. `NewLogger(cfg, store LocalLogStore, ...)` — **`store` is required** (non-nil).
+- **Construction:** e.g. **`NewClient(store LocalLogStore, opts Options)`** — **`store` is required** (non-nil). The parent owns the **`*Client`** value.
 
 ### Initialization (optional parameters)
 
@@ -281,8 +281,23 @@ type LocalLogStore interface {
 - Environment
 - Single instance per application
 - Random session ID when initialized
-- gRPC **server address** (host:port) and **token** (sent as gRPC **metadata** on each call); when matching **Default listen ports**, typical dev target is **`localhost:7443`**
+- **Remote sending**: may be disabled (`DisableRemote` / local-only); when enabled, **gRPC server address** as **`host:port`** or optional **`RemoteURL`** (`grpc://host:port`); when matching **Default listen ports**, typical dev target is **`localhost:7443`**
+- **Bearer token** (sent as gRPC **metadata** on each call) when remote is enabled
 - **TLS**: when the server uses **auto-generated** certificates, the client must use a **custom trust** (server cert/CA PEM) or an **explicit dev-only** insecure flag—document both in SDK examples
+
+### MCP ingest and optional remote forward
+
+The **MCP** server (stdio **`cmd/mcp`** or streamable HTTPS on the main process) exposes **`ingest_batch`** with the same JSON shape as **HTTPS** **`/api/v1/ingest/batch`**. Records are written to the **local** database used by that MCP process. Optionally, environment variables may configure a **second** gRPC **LoggerService** target so the same batch is **forwarded** after local ingest succeeds; **`MCP_REMOTE_SENDING=false`** disables that forward while keeping local ingest.
+
+### Package default (`Init`)
+
+The SDK may expose a **single process-wide default** so call sites can use package-level **`Log` / `Track` / `Flush`** without carrying a **`*Client`**.
+
+- The **parent** still builds the client with **`NewClient`**; it then calls **`Init(client)`** to register that instance (non-nil). **`Init`** must not replace an existing default without **`Close`** on the default first (second **`Init`** returns an **`ErrAlreadyInitialized`**-style error).
+- **`Close`** on the package API shuts down the registered client and clears the default **only if** **`(*Client).Close`** succeeds; on failure the default remains for retry.
+- Package-level operations that use the default should be **serialized with respect to `Close`** on that default (e.g. hold a read lock for the duration of each **`Log` / `Track` / `Flush` / `SetAnalyticsEnabled`** so **`Close`** cannot run concurrently with them).
+
+Exported sentinel errors should include at least: no active default (**`ErrNotInitialized`**), duplicate **`Init`** (**`ErrAlreadyInitialized`**), **`Init(nil)`** (**`ErrNilClient`**).
 
 ### API and behavior
 

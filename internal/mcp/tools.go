@@ -16,9 +16,20 @@ import (
 
 type ToolConfig struct {
 	EnableDeleteLogs bool
+
+	MaxMetadataBytes     int
+	EnforceMetadataLimit bool
+
+	// RemoteIngest is optional; when set, ingest_batch also forwards to this gRPC LoggerService.
+	RemoteIngest *RemoteLoggerClient
 }
 
 func RegisterTools(s *mcp.Server, repo *store.Repository, cfg ToolConfig) {
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "ingest_batch",
+		Description: "Insert log records into the local database (same shape as HTTPS POST /api/v1/ingest/batch). When MCP_REMOTE_GRPC_ADDRESS is set and MCP_REMOTE_SENDING is enabled, also forwards the batch to that remote LoggerService over gRPC. If the remote call fails after local ingest succeeds, the tool errors (local ingest is idempotent on log_id).",
+	}, ingestBatch(repo, cfg))
+
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_applications",
 		Description: "List distinct application_name values stored in the database (cross-tenant directory).",
