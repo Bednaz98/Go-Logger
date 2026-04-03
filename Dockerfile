@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.22-bookworm AS build
+# Must match go.mod `go` directive (1.22 image cannot run go mod download for go 1.25 modules).
+FROM golang:1.25-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
