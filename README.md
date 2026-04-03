@@ -20,6 +20,22 @@ go run ./cmd/server
 
 Defaults: gRPC **TLS** on `0.0.0.0:7443`, HTTPS on `0.0.0.0:8443`, MCP HTTPS on `0.0.0.0:8444`. Without `TLS_*` env vars the server generates a **self-signed** cert and logs a **SHA-256 fingerprint**.
 
+### Docker image
+
+The **`Dockerfile`** produces **`/app/server`** (default entrypoint) and **`/app/mcp`** (stdio MCP). CI publishes **`ghcr.io/<owner>/<go-logger>`** with both binaries.
+
+```bash
+# API server (default)
+docker run --rm -p 7443:7443 -p 8443:8443 -p 8444:8444 \
+  -e DATABASE_URL=file:/data/logger.db?cache=shared \
+  -v logger-data:/data ghcr.io/joshuabednaz/go-logger:latest
+
+# MCP over stdio (needs -i; set DATABASE_URL to Postgres or mount a file DB)
+docker run --rm -i --entrypoint /app/mcp \
+  -e DATABASE_URL=file:/data/logger.db?cache=shared \
+  -v logger-data:/data ghcr.io/joshuabednaz/go-logger:latest
+```
+
 ### TLS environment variables
 
 | Variable | Purpose |
