@@ -20,20 +20,27 @@ go run ./cmd/server
 
 Defaults: gRPC **TLS** on `0.0.0.0:7443`, HTTPS on `0.0.0.0:8443`, MCP HTTPS on `0.0.0.0:8444`. Without `TLS_*` env vars the server generates a **self-signed** cert and logs a **SHA-256 fingerprint**.
 
-### Docker image
+### Docker images
 
-The **`Dockerfile`** produces **`/app/server`** (default entrypoint) and **`/app/mcp`** (stdio MCP). CI publishes **`ghcr.io/<owner>/<go-logger>`** with both binaries.
+The **`Dockerfile`** has two targets; CI publishes both to GHCR:
+
+| Image | Target | Contents |
+| ----- | ------ | -------- |
+| **`ghcr.io/<owner>/<repo>-server`** | `server` | gRPC + HTTPS + MCP streamable HTTP |
+| **`ghcr.io/<owner>/<repo>-mcp`** | `mcp` | stdio MCP only (smaller) |
+
+Local build: `docker build --target server -t logger-server .` or `--target mcp -t logger-mcp .`
 
 ```bash
-# API server (default)
+# API server
 docker run --rm -p 7443:7443 -p 8443:8443 -p 8444:8444 \
   -e DATABASE_URL=file:/data/logger.db?cache=shared \
-  -v logger-data:/data ghcr.io/joshuabednaz/go-logger:latest
+  -v logger-data:/data ghcr.io/joshuabednaz/go-logger-server:latest
 
-# MCP over stdio (needs -i; set DATABASE_URL to Postgres or mount a file DB)
-docker run --rm -i --entrypoint /app/mcp \
+# MCP stdio (needs -i)
+docker run --rm -i \
   -e DATABASE_URL=file:/data/logger.db?cache=shared \
-  -v logger-data:/data ghcr.io/joshuabednaz/go-logger:latest
+  -v logger-data:/data ghcr.io/joshuabednaz/go-logger-mcp:latest
 ```
 
 ### TLS environment variables
