@@ -1,0 +1,79 @@
+# `@joshuabednaz/go-logger-client`
+
+TypeScript client for the [Go Logger](https://github.com/joshuabednaz/go-logger) **HTTPS JSON API** (`/api/v1`). Uses `fetch` (Node 18+, modern browsers, Bun, Deno with fetch).
+
+## Install from GitHub Packages
+
+Create or extend **`.npmrc`** in your project (use a read-only GitHub token with `read:packages`):
+
+```
+@joshuabednaz:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+Then:
+
+```bash
+npm install @joshuabednaz/go-logger-client
+```
+
+Published versions look like `0.1.0-main.<run_id>.<run_attempt>` on each successful `main` build. In GitHub → **Packages**, set package visibility to **Public** if you want installs without auth (policy varies; many setups still use a token).
+
+**Forks:** change the `name` field in `package.json` to your scope (e.g. `@you/go-logger-client`) and adjust `.npmrc` before publishing.
+
+## Usage
+
+```typescript
+import { LoggerClient } from '@joshuabednaz/go-logger-client';
+
+const logger = new LoggerClient({
+  baseUrl: 'https://localhost:5001', // or http://localhost:5003 with HTTP_PLAIN_LISTEN
+  token: process.env.LOGGER_TOKEN, // Bearer; omit if server auth disabled
+});
+
+await logger.health();
+
+await logger.log({
+  applicationName: 'my-app',
+  message: 'User signed in',
+  level: 'info',
+  metadata: { userId: 'u1' },
+});
+
+await logger.track({
+  applicationName: 'my-app',
+  eventName: 'button_click',
+  metadata: { buttonId: 'save' },
+});
+
+await logger.ingestBatch({
+  application_name: 'my-app',
+  records: [
+    /* full LogRecord[] — see types */
+  ],
+});
+```
+
+### TLS (dev)
+
+Self-signed server: use your CA with Node (`NODE_EXTRA_CA_CERTS`) or plain HTTP with `HTTP_PLAIN_LISTEN=true` (not for production on untrusted networks).
+
+### Metadata encoding
+
+The server expects `metadata_json` as **base64(UTF-8 JSON)**. `log()` / `track()` handle this; for raw `ingestBatch`, use `metadataToJsonField()` from this package.
+
+## API surface
+
+| Method | HTTP |
+| ------ | ---- |
+| `health()` | `GET /api/v1/health` |
+| `ingestBatch()` | `POST /api/v1/ingest/batch` |
+| `log()` | convenience → ingest operational |
+| `track()` | convenience → ingest analytics |
+| `queryLogs()` | `POST /api/v1/logs/query` |
+| `listLogsQueryParams()` | `GET /api/v1/logs?...` |
+| `deleteLogs()` | `DELETE /api/v1/logs` |
+
+Errors throw `LoggerApiError` with `status` and optional `code` / `details` from the server JSON problem body.
+
+OpenAPI: [`../../docs/openapi.yaml`](../../docs/openapi.yaml).

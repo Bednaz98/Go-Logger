@@ -67,8 +67,11 @@ A **REST-style HTTPS** surface lets **non-Go** clients (Node, Python, curl, brow
 | **Compression** | Support **`Accept-Encoding` / `Content-Encoding`** (**gzip**, **`zstd`** if middleware available) for large batches |
 | **Errors** | JSON problem object or stable `{ "code", "message", "details" }` mapping from **gRPC status** / domain errors; use appropriate **HTTP status** (400, 401, 413 for oversize metadata, etc.). **Duplicate `log id` on ingest** maps to **2xx** with the same body shape as success (**idempotent**), matching gRPC. **Batch ingest** is **all-or-nothing** (same transactional rule as gRPC). |
 | **Implementation** | **`net/http`** or a light router (**Chi**, **Echo**, etc.); handlers call the **same repository/store** as **gRPC** (no duplicate business logic) |
+| **TypeScript clients** | Optional **npm** package (**`@joshuabednaz/go-logger-client`**, source under **`clients/ts`**) using **`fetch`** against **`/api/v1`**; published to **GitHub Packages** alongside container images from CI |
 
 **Listener layout:** Run **gRPC** and **HTTPS JSON** on **separate ports** by default; see **Default listen ports** under **Server**. Reverse-proxy termination is supported; document upstream ports in config.
+
+**Optional cleartext HTTP (same routes):** When enabled via config (e.g. **`HTTP_PLAIN_LISTEN=true`**), the process may expose a **second** listener on a distinct port with the **same** **`/api/v1/*`** handler stack (**Bearer** auth and limits unchanged) over **HTTP** (no TLS). Default **off**; intended for **reverse proxies** that terminate TLS upstream or **trusted local** integrations. Operators must not expose this listener to untrusted networks without an edge proxy.
 
 ---
 
@@ -281,7 +284,7 @@ type LocalLogStore interface {
 - Environment
 - Single instance per application
 - Random session ID when initialized
-- **Remote sending**: may be disabled (`DisableRemote` / local-only); when enabled, **gRPC server address** as **`host:port`** or optional **`RemoteURL`** (`grpc://host:port`); when matching **Default listen ports**, typical dev target is **`localhost:7443`**
+- **Remote sending**: may be disabled (`DisableRemote` / local-only); when enabled, **gRPC server address** as **`host:port`** or optional **`RemoteURL`** (`grpc://host:port`); when matching **Default listen ports**, typical dev target is **`localhost:5000`**
 - **Bearer token** (sent as gRPC **metadata** on each call) when remote is enabled
 - **TLS**: when the server uses **auto-generated** certificates, the client must use a **custom trust** (server cert/CA PEM) or an **explicit dev-only** insecure flag—document both in SDK examples
 
@@ -354,12 +357,13 @@ All values are **defaults**; hosts may override via config. Tune for latency vs 
 
 | Listener | Default port | Protocol | Notes |
 | -------- | ------------ | -------- | ----- |
-| **gRPC** (ingest, query, delete RPCs) | **7443** | **gRPC over TLS** | Primary port for the Go SDK |
-| **HTTPS JSON API** | **8443** | **HTTPS** | REST/OpenAPI integrators |
-| **MCP HTTP** (in-process, if enabled) | **8444** | **HTTPS** (MCP streamable HTTP) | Distinct from **8443** to avoid route clashes |
-| **Health (HTTPS)** | *same as 8443* | **GET `/api/v1/health`** on the JSON server | No separate port |
+| **gRPC** (ingest, query, delete RPCs) | **5000** | **gRPC over TLS** | Primary port for the Go SDK |
+| **HTTPS JSON API** | **5001** | **HTTPS** | REST/OpenAPI integrators |
+| **JSON API (optional plain HTTP)** | **5003** (default when enabled) | **HTTP** | Same **`/api/v1/*`** as HTTPS; **off** unless **`HTTP_PLAIN_LISTEN=true`**; port via **`HTTP_PLAIN_PORT`** |
+| **MCP HTTP** (in-process, if enabled) | **5002** | **HTTPS** (MCP streamable HTTP) | Distinct from **5001** to avoid route clashes |
+| **Health (HTTPS)** | *same as 5001* | **GET `/api/v1/health`** on the JSON server | No separate port |
 
-**Example client base URLs:** `https://localhost:8443`, gRPC target `localhost:7443` (adjust host if not local).
+**Example client base URLs:** `https://localhost:5001`, optional `http://localhost:5003` when plain HTTP is enabled, gRPC target `localhost:5000` (adjust host if not local).
 
 ### Database configuration
 

@@ -123,7 +123,7 @@ Phased build checklist with **concrete files** (paths relative to repo root). Re
 - [ ] Enforce optional **metadata JSON max size** (256 KiB default when enabled).
 - [ ] Return `OK` + `accepted_count` for idempotent duplicate **log_id** across requests; **0** if all duplicates.
 - [ ] Integration test: `bufconn` or real port; success, rollback, idempotent retry.
-- [ ] Update `cmd/server/main.go`: load config, DB, TLS, start gRPC on **`LISTEN:7443`**.
+- [ ] Update `cmd/server/main.go`: load config, DB, TLS, start gRPC on **`LISTEN:5000`** (default **`GRPC_PORT`**).
 
 ---
 
@@ -194,7 +194,7 @@ Phased build checklist with **concrete files** (paths relative to repo root). Re
 
 ### Steps
 
-- [ ] Start HTTPS server on **8443** with shared TLS from Phase 3.
+- [ ] Start HTTPS server on **5001** (default **`HTTP_PORT`**) with shared TLS from Phase 3.
 - [ ] Map JSON ↔ repo calls; same validation as gRPC (tenant, batch rules, metadata size).
 - [ ] Contract tests: same inputs → same DB state as gRPC **or** shared handler layer.
 - [ ] Keep `docs/openapi.yaml` in sync (or generate from handlers).
@@ -212,7 +212,7 @@ Phased build checklist with **concrete files** (paths relative to repo root). Re
 | `internal/mcp/tools.go` | Register `list_applications`, `get_log_by_id`, `query_logs`, `count_logs`, `delete_logs`. |
 | `internal/mcp/schema.go` *(optional)* | JSON Schema for tool inputs (or inline in registration). |
 | `internal/mcp/server_stdio.go` | MCP server over stdin/stdout. |
-| `internal/mcp/server_http.go` | MCP streamable HTTP on **8444** (reuse TLS). |
+| `internal/mcp/server_http.go` | MCP streamable HTTP on **5002** (default **`MCP_HTTP_PORT`**, reuse TLS). |
 | `cmd/mcp/main.go` *(replace stub)* | Load DSN from env, open DB, run stdio MCP. |
 | `docs/mcp-cursor-example.json` *(optional)* | Sample Cursor MCP config snippet. |
 
@@ -235,7 +235,7 @@ Phased build checklist with **concrete files** (paths relative to repo root). Re
 | File | Purpose |
 | ---- | ------- |
 | `internal/observability/log.go` *(optional)* | slog wiring, gRPC logging interceptor. |
-| `Dockerfile` *(optional)* | Multi-stage build; expose 7443/8443/8444. |
+| `Dockerfile` *(optional)* | Multi-stage build; **`server`** target **`ARG`** defaults **5000–5003** → **`ENV`** + **`EXPOSE`**. |
 | `deploy/docker-compose.yml` *(optional)* | Postgres + logger server. |
 | `CHANGELOG.md` | Keep a changelog. |
 | `CONTRIBUTING.md` *(optional)* | PR + proto breaking rules. |

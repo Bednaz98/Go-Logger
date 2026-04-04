@@ -7,10 +7,10 @@ func TestParseDialTarget(t *testing.T) {
 		in   string
 		want string
 	}{
-		{"localhost:7443", "localhost:7443"},
-		{"grpc://example.com:7443", "example.com:7443"},
+		{"localhost:5000", "localhost:5000"},
+		{"grpc://example.com:5000", "example.com:5000"},
 		{"GRPC://10.0.0.1:443", "10.0.0.1:443"},
-		{"grpcs://api.example:7443", "api.example:7443"},
+		{"grpcs://api.example:5000", "api.example:5000"},
 	}
 	for _, tc := range tests {
 		got, err := ParseDialTarget(tc.in)

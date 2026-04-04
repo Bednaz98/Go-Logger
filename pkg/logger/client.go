@@ -11,7 +11,7 @@ import (
 // Options configures the client SDK.
 type Options struct {
 	ApplicationName string
-	// GRPCAddress is the remote gRPC target as host:port (e.g. localhost:7443).
+	// GRPCAddress is the remote gRPC target as host:port (e.g. localhost:5000).
 	GRPCAddress string
 	// RemoteURL optionally overrides GRPCAddress when non-empty. Use host:port or grpc:// / grpcs://host:port
 	// (scheme selects parsing only; TLS still comes from TLSCAPEM / InsecureSkipVerify).

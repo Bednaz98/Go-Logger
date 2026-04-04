@@ -1,6 +1,6 @@
 # Go Logger
 
-Multi-tenant **application / operational logs** and **analytics** with **gRPC** (TLS), **HTTPS JSON**, **MCP** (stdio + streamable HTTPS), and a **Go client SDK** with a pluggable local queue.
+Multi-tenant **application / operational logs** and **analytics** with **gRPC** (TLS), **HTTPS JSON**, **MCP** (stdio + streamable HTTPS), a **Go client SDK** with a pluggable local queue, and a **TypeScript client** for the JSON API.
 
 - **Specification:** [spec.md](spec.md)
 - **Build plan:** [implementation-checklist.md](implementation-checklist.md)
@@ -18,7 +18,7 @@ export DATABASE_URL="file:logger.db?cache=shared"   # or postgres://...
 go run ./cmd/server
 ```
 
-Defaults: gRPC **TLS** on `0.0.0.0:7443`, HTTPS on `0.0.0.0:8443`, MCP HTTPS on `0.0.0.0:8444`. Without `TLS_*` env vars the server generates a **self-signed** cert and logs a **SHA-256 fingerprint**.
+Defaults: gRPC **TLS** on `0.0.0.0:5000`, HTTPS on `0.0.0.0:5001`, MCP HTTPS on `0.0.0.0:5002`, optional plain HTTP JSON on `5003` when `HTTP_PLAIN_LISTEN=true`. Without `TLS_*` env vars the server generates a **self-signed** cert and logs a **SHA-256 fingerprint**.
 
 ### Docker images
 
@@ -26,14 +26,22 @@ The **`Dockerfile`** has two targets; CI publishes both to GHCR:
 
 | Image | Target | Contents |
 | ----- | ------ | -------- |
-| **`ghcr.io/<owner>/<repo>-server`** | `server` | gRPC + HTTPS + MCP streamable HTTP |
+| **`ghcr.io/<owner>/<repo>-server`** | `server` | gRPC + HTTPS + optional plain HTTP JSON API + MCP streamable HTTPS |
 | **`ghcr.io/<owner>/<repo>-mcp`** | `mcp` | stdio MCP only (smaller) |
 
 Local build: `docker build --target server -t logger-server .` or `--target mcp -t logger-mcp .`
 
+The **`server`** image sets **`GRPC_PORT`**, **`HTTP_PORT`**, **`MCP_HTTP_PORT`**, and **`HTTP_PLAIN_PORT`** from Docker **`ARG`** defaults (**5000–5003**). Override at build time (`--build-arg GRPC_PORT=6000`, …) or at run time (`-e GRPC_PORT=6000`, …); map host ports to match.
+
 ```bash
 # API server
-docker run --rm -p 7443:7443 -p 8443:8443 -p 8444:8444 \
+docker run --rm -p 5000:5000 -p 5001:5001 -p 5002:5002 \
+  -e DATABASE_URL=file:/data/logger.db?cache=shared \
+  -v logger-data:/data ghcr.io/joshuabednaz/go-logger-server:latest
+
+# Same server with cleartext JSON on 5003 (e.g. curl without -k)
+docker run --rm -p 5000:5000 -p 5001:5001 -p 5002:5002 -p 5003:5003 \
+  -e HTTP_PLAIN_LISTEN=true \
   -e DATABASE_URL=file:/data/logger.db?cache=shared \
   -v logger-data:/data ghcr.io/joshuabednaz/go-logger-server:latest
 
@@ -57,9 +65,11 @@ docker run --rm -i \
 | Variable | Default | Notes |
 | -------- | ------- | ----- |
 | `LISTEN_BIND_ADDRESS` | `0.0.0.0` | Bind address for all listeners |
-| `GRPC_PORT` | `7443` | gRPC over TLS |
-| `HTTP_PORT` | `8443` | HTTPS JSON API |
-| `MCP_HTTP_PORT` | `8444` | MCP streamable HTTP (disable with `MCP_HTTP_LISTEN=false`) |
+| `GRPC_PORT` | `5000` | gRPC over TLS |
+| `HTTP_PORT` | `5001` | HTTPS JSON API (`/api/v1/...`) |
+| `HTTP_PLAIN_LISTEN` | `false` | If `true`, serve the **same** JSON routes on cleartext HTTP (see `HTTP_PLAIN_PORT`); use behind a reverse proxy or trusted networks only |
+| `HTTP_PLAIN_PORT` | `5003` | Plain HTTP listener; must differ from `HTTP_PORT` and `MCP_HTTP_PORT` |
+| `MCP_HTTP_PORT` | `5002` | MCP streamable HTTP (disable with `MCP_HTTP_LISTEN=false`) |
 | `LOGGER_ENFORCE_METADATA_LIMIT` | `true` | Reject oversize `metadata_json` per record |
 | `LOGGER_MAX_METADATA_BYTES` | `262144` | Metadata cap when enforcement on |
 | `LOGGER_GRPC_MAX_RECV_BYTES` / `LOGGER_GRPC_MAX_SEND_BYTES` | `4194304` | gRPC message size |
@@ -86,9 +96,11 @@ Applies to **`cmd/mcp`** (stdio) and streamable **MCP HTTPS** on the main server
 
 Health is unauthenticated; other routes require `Authorization: Bearer <token>`.
 
+With **`HTTP_PLAIN_LISTEN=true`**, the same paths are available on **`http://localhost:5003`** (default **`HTTP_PLAIN_PORT`**) without TLS.
+
 ```bash
-curl -sk https://localhost:8443/api/v1/health
-curl -sk https://localhost:8443/api/v1/ingest/batch \
+curl -sk https://localhost:5001/api/v1/health
+curl -sk https://localhost:5001/api/v1/ingest/batch \
   -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" \
   -d '{"application_name":"demo","records":[{"log_id":"1","record_kind":"operational","application_name":"demo","log_message":"hello","event_timestamp":"2026-03-27T12:00:00Z","log_level":"info"}]}'
 ```
@@ -98,7 +110,7 @@ curl -sk https://localhost:8443/api/v1/ingest/batch \
 ```bash
 grpcurl -insecure -H "authorization: Bearer dev-token" \
   -d '{"application_name":"demo","records":[{"log_id":"2","record_kind":"RECORD_KIND_OPERATIONAL","application_name":"demo","log_message":"hi","event_timestamp":"2026-03-27T12:00:00Z","log_level":"LOG_LEVEL_INFO"}]}' \
-  localhost:7443 logger.v1.LoggerService/IngestBatch
+  localhost:5000 logger.v1.LoggerService/IngestBatch
 ```
 
 ## MCP (stdio)
@@ -106,6 +118,22 @@ grpcurl -insecure -H "authorization: Bearer dev-token" \
 The `cmd/mcp` binary speaks MCP over stdin/stdout and opens the database from `DATABASE_URL` (same schema as the server). Tools include **`ingest_batch`** (local DB, optional remote forward — see **MCP remote forward** above), **`query_logs`**, **`get_log_by_id`**, etc.
 
 Example Cursor snippet: [docs/mcp-cursor-example.json](docs/mcp-cursor-example.json).
+
+## TypeScript client (Node / browser)
+
+Package **[`clients/ts`](clients/ts)** — **`@joshuabednaz/go-logger-client`** — talks to the same **`/api/v1`** JSON API as curl (ingest, query, delete, health). CI **publishes to GitHub Packages** on every successful **`main`** push (alongside Docker images); version is **`0.1.0-main.<run_id>.<run_attempt>`** (unique per workflow run / retry).
+
+```typescript
+import { LoggerClient } from '@joshuabednaz/go-logger-client';
+
+const log = new LoggerClient({
+  baseUrl: 'https://your-host:5001',
+  token: process.env.LOGGER_TOKEN,
+});
+await log.log({ applicationName: 'app', message: 'hello', level: 'info' });
+```
+
+Install and `.npmrc` setup: see **[clients/ts/README.md](clients/ts/README.md)**.
 
 ## Go client SDK
 
@@ -152,7 +180,7 @@ if err != nil { /* ... */ }
 
 client, err := logger.NewClient(store, logger.Options{
 	ApplicationName:    "my-app",
-	GRPCAddress:        "localhost:7443",
+	GRPCAddress:        "localhost:5000",
 	BearerToken:        os.Getenv("LOGGER_TOKEN"),
 	InsecureSkipVerify: true, // dev only; production: set TLSCAPEM to your CA / server cert PEM
 })

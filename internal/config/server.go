@@ -12,8 +12,11 @@ type Server struct {
 	ListenBindAddress string
 	GRPCPort          int
 	HTTPPort          int
-	MCPHTTPPort       int
-	MCPHTTPListen     bool
+	// HTTPPlainListen enables a second listener with the same /api/v1 routes over cleartext HTTP (no TLS).
+	HTTPPlainListen bool
+	HTTPPlainPort   int
+	MCPHTTPPort     int
+	MCPHTTPListen   bool
 
 	AuthBearerToken string
 	AuthDisabled    bool
@@ -55,9 +58,11 @@ func LoadServerFromEnv() Server {
 		DatabaseURL: getenv("DATABASE_URL", "file:logger.db?cache=shared"),
 
 		ListenBindAddress: getenv("LISTEN_BIND_ADDRESS", "0.0.0.0"),
-		GRPCPort:          getenvInt("GRPC_PORT", 7443),
-		HTTPPort:          getenvInt("HTTP_PORT", 8443),
-		MCPHTTPPort:       getenvInt("MCP_HTTP_PORT", 8444),
+		GRPCPort:          getenvInt("GRPC_PORT", 5000),
+		HTTPPort:          getenvInt("HTTP_PORT", 5001),
+		HTTPPlainListen:   getenvBool("HTTP_PLAIN_LISTEN", false),
+		HTTPPlainPort:     getenvInt("HTTP_PLAIN_PORT", 5003),
+		MCPHTTPPort:       getenvInt("MCP_HTTP_PORT", 5002),
 		MCPHTTPListen:     getenvBool("MCP_HTTP_LISTEN", true),
 
 		AuthBearerToken: getenv("LOGGER_AUTH_TOKEN", ""),

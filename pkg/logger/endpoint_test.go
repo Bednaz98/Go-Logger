@@ -3,9 +3,9 @@ package logger
 import "testing"
 
 func TestGrpcDialTargetRemoteOverridesPrimary(t *testing.T) {
-	got, err := grpcDialTarget("primary:1", "grpc://override:7443")
-	if err != nil || got != "override:7443" {
-		t.Fatalf("grpcDialTarget = %q, %v; want override:7443, nil", got, err)
+	got, err := grpcDialTarget("primary:1", "grpc://override:5000")
+	if err != nil || got != "override:5000" {
+		t.Fatalf("grpcDialTarget = %q, %v; want override:5000, nil", got, err)
 	}
 }
 

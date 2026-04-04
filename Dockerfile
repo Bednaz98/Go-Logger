@@ -26,9 +26,18 @@ ENTRYPOINT ["/app/mcp"]
 
 # API server: gRPC + HTTPS + MCP streamable HTTP (publish as ghcr.io/<owner>/<repo>-server; default build target)
 FROM debian:bookworm-slim AS server
+# Override at build: docker build --build-arg GRPC_PORT=6000 ...
+ARG GRPC_PORT=5000
+ARG HTTP_PORT=5001
+ARG MCP_HTTP_PORT=5002
+ARG HTTP_PLAIN_PORT=5003
+ENV GRPC_PORT=${GRPC_PORT}
+ENV HTTP_PORT=${HTTP_PORT}
+ENV MCP_HTTP_PORT=${MCP_HTTP_PORT}
+ENV HTTP_PLAIN_PORT=${HTTP_PLAIN_PORT}
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libsqlite3-0 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build-server /out/server /app/server
 ENV DATABASE_URL=file:/data/logger.db?cache=shared
-EXPOSE 7443 8443 8444
+EXPOSE ${GRPC_PORT} ${HTTP_PORT} ${MCP_HTTP_PORT} ${HTTP_PLAIN_PORT}
 ENTRYPOINT ["/app/server"]

@@ -26,9 +26,10 @@ services:
       LOGGER_AUTH_TOKEN: dev-token
       LISTEN_BIND_ADDRESS: 0.0.0.0
     ports:
-      - "7443:7443"
-      - "8443:8443"
-      - "8444:8444"
+      - "5000:5000"
+      - "5001:5001"
+      - "5002:5002"
+      - "5003:5003"
     volumes:
       - logger-data:/data
 

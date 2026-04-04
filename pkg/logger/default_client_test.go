@@ -28,7 +28,7 @@ func testClient(t *testing.T) *Client {
 	t.Helper()
 	c, err := NewClient(nopStore{}, Options{
 		ApplicationName:    "test",
-		GRPCAddress:        "127.0.0.1:7443",
+		GRPCAddress:        "127.0.0.1:5000",
 		InsecureSkipVerify: true,
 	})
 	if err != nil {
