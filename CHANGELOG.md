@@ -3,6 +3,9 @@
 ## Unreleased
 
 - **Breaking — server defaults:** Default listen ports are now **5000** (gRPC), **5001** (HTTPS JSON), **5002** (MCP HTTPS), **5003** (plain HTTP JSON when `HTTP_PLAIN_LISTEN=true`). Override with **`GRPC_PORT`**, **`HTTP_PORT`**, **`MCP_HTTP_PORT`**, **`HTTP_PLAIN_PORT`**, or Docker **`server`** image **`ARG`** / **`ENV`**.
+- **Config:** **`GRPC_PORT`**, **`HTTP_PORT`**, **`MCP_HTTP_PORT`**, and **`HTTP_PLAIN_PORT`** must be integers **1–65535** when set; invalid or out-of-range values **fail startup** (no silent fallback).
+- **Security:** Bearer token checks for gRPC, HTTPS JSON, and MCP streamable HTTP use **constant-time** comparison when lengths match.
+- **Compose:** **`deploy/docker-compose.yml`** no longer publishes **5003** or mounts **`/data`** by default (Postgres DSN only); enable **`HTTP_PLAIN_LISTEN`** and add **`5003:5003`** if you need plain JSON locally.
 - **Go client SDK:** optional package default via `logger.Init(*Client)` with package-level `Log`, `Track`, `Flush`, `SetAnalyticsEnabled`, and `Close`; `Default()` for explicit access; exported errors `ErrNotInitialized`, `ErrAlreadyInitialized`, and `ErrNilClient`. The parent still constructs the client with `NewClient`; `Close` clears the default only after a successful `(*Client).Close`.
 - **Go client SDK:** `Options.DisableRemote` (no gRPC / no upload), `Options.RemoteURL` (`host:port` or `grpc://…`), and `ErrNoRemoteTarget` when remote is enabled but no target is set.
 - **MCP:** `ingest_batch` tool; optional forward to a remote LoggerService via `MCP_REMOTE_GRPC_ADDRESS`, `MCP_REMOTE_SENDING`, `MCP_REMOTE_BEARER_TOKEN`, `MCP_REMOTE_TLS_CA_PATH`, `MCP_REMOTE_INSECURE_SKIP_VERIFY` (stdio MCP and main server MCP HTTPS). Invalid remote config logs a warning and disables forward unless `MCP_REMOTE_STRICT=true`.

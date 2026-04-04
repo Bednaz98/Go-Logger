@@ -24,7 +24,11 @@ import (
 
 func main() {
 	observability.InitSlog()
-	cfg := config.LoadServerFromEnv()
+	cfg, err := config.LoadServerFromEnv()
+	if err != nil {
+		slog.Error("config", "error", err)
+		os.Exit(1)
+	}
 
 	db, dialect, err := store.OpenDB(cfg.DatabaseURL, false)
 	if err != nil {

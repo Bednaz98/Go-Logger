@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/joshuabednaz/go-logger/internal/config"
+	"github.com/joshuabednaz/go-logger/internal/securecmp"
 )
 
 func WithBearerAuth(cfg config.Server, next http.Handler) http.Handler {
@@ -20,7 +21,7 @@ func WithBearerAuth(cfg config.Server, next http.Handler) http.Handler {
 			return
 		}
 		tok := strings.TrimSpace(h[len(p):])
-		if tok != cfg.AuthBearerToken {
+		if !securecmp.Equal(tok, cfg.AuthBearerToken) {
 			WriteProblem(w, http.StatusUnauthorized, "unauthenticated", "invalid token")
 			return
 		}

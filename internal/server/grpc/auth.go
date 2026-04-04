@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/joshuabednaz/go-logger/internal/config"
+	"github.com/joshuabednaz/go-logger/internal/securecmp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -32,7 +33,7 @@ func AuthUnaryInterceptor(cfg config.Server) grpc.UnaryServerInterceptor {
 			return nil, status.Error(codes.Unauthenticated, "authorization must be Bearer token")
 		}
 		tok := strings.TrimSpace(raw[len(prefix):])
-		if tok != cfg.AuthBearerToken {
+		if !securecmp.Equal(tok, cfg.AuthBearerToken) {
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 		return handler(ctx, req)

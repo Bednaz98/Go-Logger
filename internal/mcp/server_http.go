@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/joshuabednaz/go-logger/internal/config"
+	"github.com/joshuabednaz/go-logger/internal/securecmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -22,7 +23,7 @@ func StreamableHTTPHandler(srv *mcp.Server, cfg config.Server) http.Handler {
 			return
 		}
 		tok := strings.TrimSpace(raw[len(p):])
-		if tok != cfg.AuthBearerToken {
+		if !securecmp.Equal(tok, cfg.AuthBearerToken) {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}

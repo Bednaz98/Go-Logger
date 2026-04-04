@@ -65,11 +65,11 @@ docker run --rm -i \
 | Variable | Default | Notes |
 | -------- | ------- | ----- |
 | `LISTEN_BIND_ADDRESS` | `0.0.0.0` | Bind address for all listeners |
-| `GRPC_PORT` | `5000` | gRPC over TLS |
-| `HTTP_PORT` | `5001` | HTTPS JSON API (`/api/v1/...`) |
+| `GRPC_PORT` | `5000` | gRPC over TLS (must be **1–65535**; invalid values **fail startup**) |
+| `HTTP_PORT` | `5001` | HTTPS JSON API (`/api/v1/...`); same port rules |
 | `HTTP_PLAIN_LISTEN` | `false` | If `true`, serve the **same** JSON routes on cleartext HTTP (see `HTTP_PLAIN_PORT`); use behind a reverse proxy or trusted networks only |
-| `HTTP_PLAIN_PORT` | `5003` | Plain HTTP listener; must differ from `HTTP_PORT` and `MCP_HTTP_PORT` |
-| `MCP_HTTP_PORT` | `5002` | MCP streamable HTTP (disable with `MCP_HTTP_LISTEN=false`) |
+| `HTTP_PLAIN_PORT` | `5003` | Plain HTTP listener; must differ from `HTTP_PORT` and `MCP_HTTP_PORT`; same port rules |
+| `MCP_HTTP_PORT` | `5002` | MCP streamable HTTP (disable with `MCP_HTTP_LISTEN=false`); same port rules |
 | `LOGGER_ENFORCE_METADATA_LIMIT` | `true` | Reject oversize `metadata_json` per record |
 | `LOGGER_MAX_METADATA_BYTES` | `262144` | Metadata cap when enforcement on |
 | `LOGGER_GRPC_MAX_RECV_BYTES` / `LOGGER_GRPC_MAX_SEND_BYTES` | `4194304` | gRPC message size |
@@ -83,7 +83,7 @@ When **`MCP_REMOTE_GRPC_ADDRESS`** is set, the **`ingest_batch`** MCP tool write
 | -------- | ------- | ----- |
 | `MCP_REMOTE_GRPC_ADDRESS` | *(empty)* | Remote target as `host:port` or `grpc://host:port`; empty disables forwarding |
 | `MCP_REMOTE_SENDING` | `true` if address set, else ignored | Set to `false` to keep **`ingest_batch`** local-only even when the address is set |
-| `MCP_REMOTE_BEARER_TOKEN` | falls back to `LOGGER_AUTH_TOKEN` | gRPC **authorization** metadata |
+| `MCP_REMOTE_BEARER_TOKEN` | falls back to `LOGGER_AUTH_TOKEN` | gRPC **authorization** metadata toward the **remote**; set explicitly in production so it is not tied to who may call **this** server |
 | `MCP_REMOTE_TLS_CA_PATH` | *(empty)* | PEM file for remote server trust (required unless insecure) |
 | `MCP_REMOTE_INSECURE_SKIP_VERIFY` | `false` | Dev-only TLS skip (mutually exclusive with proper CA in production) |
 | `MCP_REMOTE_STRICT` | `false` | If `true`, bad remote TLS/address config **exits the process**; if `false`, MCP still runs with local **`ingest_batch`** only |

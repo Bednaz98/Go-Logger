@@ -108,6 +108,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Scope must match package.json name; forks need their own scope + package name to publish.
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -131,4 +132,4 @@ jobs:
         if: env.SHOULD_PUSH == 'true'
         run: npm publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}

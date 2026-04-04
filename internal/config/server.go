@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"strings"
 )
@@ -52,17 +53,24 @@ type TLSConfig struct {
 	ExtraSANHosts []string
 }
 
-func LoadServerFromEnv() Server {
+func LoadServerFromEnv() (Server, error) {
 	mcpRemoteGRPC := getenv("MCP_REMOTE_GRPC_ADDRESS", "")
+	grpcPort, e1 := getenvPort("GRPC_PORT", 5000)
+	httpPort, e2 := getenvPort("HTTP_PORT", 5001)
+	plainPort, e3 := getenvPort("HTTP_PLAIN_PORT", 5003)
+	mcpHTTPPort, e4 := getenvPort("MCP_HTTP_PORT", 5002)
+	if err := errors.Join(e1, e2, e3, e4); err != nil {
+		return Server{}, err
+	}
 	return Server{
 		DatabaseURL: getenv("DATABASE_URL", "file:logger.db?cache=shared"),
 
 		ListenBindAddress: getenv("LISTEN_BIND_ADDRESS", "0.0.0.0"),
-		GRPCPort:          getenvInt("GRPC_PORT", 5000),
-		HTTPPort:          getenvInt("HTTP_PORT", 5001),
+		GRPCPort:          grpcPort,
+		HTTPPort:          httpPort,
 		HTTPPlainListen:   getenvBool("HTTP_PLAIN_LISTEN", false),
-		HTTPPlainPort:     getenvInt("HTTP_PLAIN_PORT", 5003),
-		MCPHTTPPort:       getenvInt("MCP_HTTP_PORT", 5002),
+		HTTPPlainPort:     plainPort,
+		MCPHTTPPort:       mcpHTTPPort,
 		MCPHTTPListen:     getenvBool("MCP_HTTP_LISTEN", true),
 
 		AuthBearerToken: getenv("LOGGER_AUTH_TOKEN", ""),
@@ -85,13 +93,14 @@ func LoadServerFromEnv() Server {
 
 		MCPEnableDeleteLogs: getenvBool("MCP_ENABLE_DELETE_LOGS", false),
 
-		MCPRemoteGRPCAddress:        mcpRemoteGRPC,
-		MCPRemoteSending:            mcpRemoteSendingFromEnv(mcpRemoteGRPC),
+		MCPRemoteGRPCAddress: mcpRemoteGRPC,
+		MCPRemoteSending:     mcpRemoteSendingFromEnv(mcpRemoteGRPC),
+		// When MCP_REMOTE_BEARER_TOKEN is unset, LOGGER_AUTH_TOKEN is reused for outbound gRPC to the remote (dev convenience only; production should set an explicit remote token).
 		MCPRemoteBearerToken:        firstNonEmpty(getenv("MCP_REMOTE_BEARER_TOKEN", ""), getenv("LOGGER_AUTH_TOKEN", "")),
 		MCPRemoteTLSCAPath:          getenv("MCP_REMOTE_TLS_CA_PATH", ""),
 		MCPRemoteInsecureSkipVerify: getenvBool("MCP_REMOTE_INSECURE_SKIP_VERIFY", false),
 		MCPRemoteStrict:             getenvBool("MCP_REMOTE_STRICT", false),
-	}
+	}, nil
 }
 
 func mcpRemoteSendingFromEnv(grpcAddr string) bool {
