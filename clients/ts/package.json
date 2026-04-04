@@ -1,5 +1,5 @@
 {
-  "name": "@joshuabednaz/go-logger-client",
+  "name": "@bednaz98/go-logger-client",
   "version": "0.1.0",
   "description": "TypeScript client for the Go Logger HTTPS JSON API (ingest, query, delete)",
   "license": "MIT",
@@ -25,7 +25,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/joshuabednaz/go-logger.git",
+    "url": "git+https://github.com/Bednaz98/Go-Logger.git",
     "directory": "clients/ts"
   },
   "scripts": {

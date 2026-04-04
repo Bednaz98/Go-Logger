@@ -1,30 +1,32 @@
-# `@joshuabednaz/go-logger-client`
+# `@bednaz98/go-logger-client`
 
-TypeScript client for the [Go Logger](https://github.com/joshuabednaz/go-logger) **HTTPS JSON API** (`/api/v1`). Uses `fetch` (Node 18+, modern browsers, Bun, Deno with fetch).
+TypeScript client for the [Go Logger](https://github.com/Bednaz98/Go-Logger) **HTTPS JSON API** (`/api/v1`). Uses `fetch` (Node 18+, modern browsers, Bun, Deno with fetch).
 
 ## Install from GitHub Packages
 
-Create or extend **`.npmrc`** in your project (use a read-only GitHub token with `read:packages`):
+Create or extend **`.npmrc`** in your project (use a read-only GitHub token with `read:packages`). Point `_authToken` at whatever env var you export (example uses `GITHUB_TOKEN`; `gh auth token` works if you export that name):
 
 ```
-@joshuabednaz:registry=https://npm.pkg.github.com
+@bednaz98:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
 Then:
 
 ```bash
-npm install @joshuabednaz/go-logger-client
+npm install @bednaz98/go-logger-client
 ```
 
 Published versions look like `0.1.0-main.<run_id>.<run_attempt>` on each successful `main` build. In GitHub → **Packages**, set package visibility to **Public** if you want installs without auth (policy varies; many setups still use a token).
 
-**Forks:** change the `name` field in `package.json` to your scope (e.g. `@you/go-logger-client`) and adjust `.npmrc` before publishing.
+**Other forks:** change the `name` field in `package.json` to your GitHub username/org scope (e.g. `@you/go-logger-client`) and adjust `.npmrc` and CI `scope` before publishing.
+
+Upstream CI publishes using the repository secret **`PUBLISH_TOKEN`** as **`NODE_AUTH_TOKEN`** (not the Actions **`GITHUB_TOKEN`**).
 
 ## Usage
 
 ```typescript
-import { LoggerClient } from '@joshuabednaz/go-logger-client';
+import { LoggerClient } from '@bednaz98/go-logger-client';
 
 const logger = new LoggerClient({
   baseUrl: 'https://localhost:5001', // or http://localhost:5003 with HTTP_PLAIN_LISTEN

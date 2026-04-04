@@ -13,7 +13,7 @@
 - **Package logger:** `ErrNotInitialized` message is now `logger: no active default client` (still use `errors.Is`).
 - **Docker / CI:** Multi-target `Dockerfile` (`server`, `mcp`); GitHub Actions publishes **`ghcr.io/<owner>/<repo>-server`** and **`ghcr.io/<owner>/<repo>-mcp`** (no single combined image).
 - **Server:** Optional cleartext HTTP listener for the same **`/api/v1/*`** JSON API as HTTPS: **`HTTP_PLAIN_LISTEN`** (default `false`), **`HTTP_PLAIN_PORT`** (default `5003`); must not collide with **`HTTP_PORT`** or **`MCP_HTTP_PORT`**.
-- **TypeScript:** New package **`@joshuabednaz/go-logger-client`** in **`clients/ts`** (HTTPS JSON API). CI job **`npm-client`** publishes to **GitHub Packages** on **`main`** with prerelease versions **`0.1.0-main.<run_id>.<run_attempt>`**.
+- **TypeScript:** Package **`@bednaz98/go-logger-client`** in **`clients/ts`** (HTTPS JSON API); scope matches GitHub owner **[Bednaz98/Go-Logger](https://github.com/Bednaz98/Go-Logger)** for GitHub Packages. CI **`npm-client`** publishes on **`main`** with versions **`0.1.0-main.<run_id>.<run_attempt>`**.
 
 ## 0.1.0 — 2026-03-27
 

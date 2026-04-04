@@ -67,7 +67,7 @@ A **REST-style HTTPS** surface lets **non-Go** clients (Node, Python, curl, brow
 | **Compression** | Support **`Accept-Encoding` / `Content-Encoding`** (**gzip**, **`zstd`** if middleware available) for large batches |
 | **Errors** | JSON problem object or stable `{ "code", "message", "details" }` mapping from **gRPC status** / domain errors; use appropriate **HTTP status** (400, 401, 413 for oversize metadata, etc.). **Duplicate `log id` on ingest** maps to **2xx** with the same body shape as success (**idempotent**), matching gRPC. **Batch ingest** is **all-or-nothing** (same transactional rule as gRPC). |
 | **Implementation** | **`net/http`** or a light router (**Chi**, **Echo**, etc.); handlers call the **same repository/store** as **gRPC** (no duplicate business logic) |
-| **TypeScript clients** | Optional **npm** package (**`@joshuabednaz/go-logger-client`**, source under **`clients/ts`**) using **`fetch`** against **`/api/v1`**; published to **GitHub Packages** alongside container images from CI |
+| **TypeScript clients** | Optional **npm** package (**`@bednaz98/go-logger-client`**, source under **`clients/ts`**) using **`fetch`** against **`/api/v1`**; published to **GitHub Packages** alongside container images from CI |
 
 **Listener layout:** Run **gRPC** and **HTTPS JSON** on **separate ports** by default; see **Default listen ports** under **Server**. Reverse-proxy termination is supported; document upstream ports in config.
 

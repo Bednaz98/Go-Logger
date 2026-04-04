@@ -8,7 +8,7 @@ Multi-tenant **application / operational logs** and **analytics** with **gRPC** 
 
 ## Module path
 
-This repository uses `github.com/joshuabednaz/go-logger`. Fork or rename by updating `go.mod`, `buf.gen.yaml` managed `go_package_prefix`, and regenerating protos (`buf generate`).
+This checkout is **[Bednaz98/Go-Logger](https://github.com/Bednaz98/Go-Logger)**. The Go module path is still **`github.com/joshuabednaz/go-logger`** (forks may keep it or rename via `go.mod`, `buf.gen.yaml` **`go_package_prefix`**, and `buf generate`).
 
 ## Run the server
 
@@ -37,18 +37,18 @@ The **`server`** image sets **`GRPC_PORT`**, **`HTTP_PORT`**, **`MCP_HTTP_PORT`*
 # API server
 docker run --rm -p 5000:5000 -p 5001:5001 -p 5002:5002 \
   -e DATABASE_URL=file:/data/logger.db?cache=shared \
-  -v logger-data:/data ghcr.io/joshuabednaz/go-logger-server:latest
+  -v logger-data:/data ghcr.io/bednaz98/go-logger-server:latest
 
 # Same server with cleartext JSON on 5003 (e.g. curl without -k)
 docker run --rm -p 5000:5000 -p 5001:5001 -p 5002:5002 -p 5003:5003 \
   -e HTTP_PLAIN_LISTEN=true \
   -e DATABASE_URL=file:/data/logger.db?cache=shared \
-  -v logger-data:/data ghcr.io/joshuabednaz/go-logger-server:latest
+  -v logger-data:/data ghcr.io/bednaz98/go-logger-server:latest
 
 # MCP stdio (needs -i)
 docker run --rm -i \
   -e DATABASE_URL=file:/data/logger.db?cache=shared \
-  -v logger-data:/data ghcr.io/joshuabednaz/go-logger-mcp:latest
+  -v logger-data:/data ghcr.io/bednaz98/go-logger-mcp:latest
 ```
 
 ### TLS environment variables
@@ -121,10 +121,10 @@ Example Cursor snippet: [docs/mcp-cursor-example.json](docs/mcp-cursor-example.j
 
 ## TypeScript client (Node / browser)
 
-Package **[`clients/ts`](clients/ts)** — **`@joshuabednaz/go-logger-client`** — talks to the same **`/api/v1`** JSON API as curl (ingest, query, delete, health). CI **publishes to GitHub Packages** on every successful **`main`** push (alongside Docker images); version is **`0.1.0-main.<run_id>.<run_attempt>`** (unique per workflow run / retry).
+Package **[`clients/ts`](clients/ts)** — **`@bednaz98/go-logger-client`** — talks to the same **`/api/v1`** JSON API as curl (ingest, query, delete, health). CI **publishes to GitHub Packages** on every successful **`main`** push (alongside Docker images); version is **`0.1.0-main.<run_id>.<run_attempt>`** (unique per workflow run / retry). **Maintainers:** add a repository secret **`PUBLISH_TOKEN`** (GitHub PAT with **`write:packages`**, from the GitHub user **`bednaz98`** that owns the **`@bednaz98`** scope); the workflow passes it to npm as **`NODE_AUTH_TOKEN`** (it does not use **`GITHUB_TOKEN`** for npm publish).
 
 ```typescript
-import { LoggerClient } from '@joshuabednaz/go-logger-client';
+import { LoggerClient } from '@bednaz98/go-logger-client';
 
 const log = new LoggerClient({
   baseUrl: 'https://your-host:5001',

@@ -99,7 +99,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     env:
       SHOULD_PUSH: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     defaults:
@@ -108,12 +107,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Scope must match package.json name; forks need their own scope + package name to publish.
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           registry-url: https://npm.pkg.github.com
-          scope: "@joshuabednaz"
+          scope: "@bednaz98"
 
       - name: Install and build
         run: |
