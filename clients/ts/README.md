@@ -2,6 +2,8 @@
 
 TypeScript client for the [Go Logger](https://github.com/Bednaz98/Go-Logger) **HTTPS JSON API** (`/api/v1`). Uses `fetch` (Node 18+, modern browsers, Bun, Deno with fetch).
 
+**Registry:** This package is **published only to GitHub Packages** ([`npm.pkg.github.com`](https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-npm-registry)), not **registry.npmjs.org**. CI runs `npm publish --registry https://npm.pkg.github.com`; `package.json` **`publishConfig.registry`** matches. Installing **`typescript`** during local/CI builds still uses the default npm registry for that dev dependency only.
+
 ## Install from GitHub Packages
 
 Create or extend **`.npmrc`** in your project (use a read-only GitHub token with `read:packages`). Point `_authToken` at whatever env var you export (example uses `GITHUB_TOKEN`; `gh auth token` works if you export that name):
