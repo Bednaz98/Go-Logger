@@ -121,7 +121,7 @@ Example Cursor snippet: [docs/mcp-cursor-example.json](docs/mcp-cursor-example.j
 
 ## TypeScript client (Node / browser)
 
-Package **[`clients/ts`](clients/ts)** — **`@bednaz98/go-logger-client`** — talks to the same **`/api/v1`** JSON API as curl (ingest, query, delete, health). CI **publishes to GitHub Packages** on every successful **`main`** push (alongside Docker images); version is **`0.1.0-main.<run_id>.<run_attempt>`** (unique per workflow run / retry). **Maintainers:** add a repository secret **`PUBLISH_TOKEN`** (GitHub PAT with **`write:packages`**, from the GitHub user **`bednaz98`** that owns the **`@bednaz98`** scope); the workflow passes it to npm as **`NODE_AUTH_TOKEN`** (it does not use **`GITHUB_TOKEN`** for npm publish).
+Package **[`clients/ts`](clients/ts)** — **`@bednaz98/go-logger-client`** — talks to the same **`/api/v1`** JSON API as curl (ingest, query, delete, health). CI **publishes to GitHub Packages** on every successful **`main`** push (alongside Docker images); version is **`0.1.0-main.<run_id>.<run_attempt>`** (unique per workflow run / retry). **Maintainers:** CI publishes with **`NODE_AUTH_TOKEN`**: if repository secret **`PUBLISH_TOKEN`** is set (non-empty PAT with **`write:packages`**, from **`bednaz98`**), that is used; otherwise it falls back to **`GITHUB_TOKEN`** with job permission **`packages: write`** (same-repo publish to GitHub Packages only). **`E401`** from npm usually means **`PUBLISH_TOKEN`** was empty, misnamed, expired, or not SSO-authorized — leave **`PUBLISH_TOKEN`** unset to use the default token, or fix the secret.
 
 ```typescript
 import { LoggerClient } from '@bednaz98/go-logger-client';

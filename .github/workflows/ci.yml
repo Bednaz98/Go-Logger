@@ -99,6 +99,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # Required when NODE_AUTH_TOKEN is GITHUB_TOKEN (same-repo publish to GPR). PAT path uses PUBLISH_TOKEN only.
+      packages: write
     env:
       SHOULD_PUSH: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     defaults:
@@ -126,8 +128,9 @@ jobs:
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
 
+      # Auth: non-empty PUBLISH_TOKEN (PAT) else GITHUB_TOKEN. E401 = empty/bad PAT or SSO; omit PUBLISH_TOKEN to use GITHUB_TOKEN.
       - name: Publish to GitHub Packages
         if: env.SHOULD_PUSH == 'true'
         run: npm publish --registry https://npm.pkg.github.com
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PUBLISH_TOKEN != '' && secrets.PUBLISH_TOKEN || secrets.GITHUB_TOKEN }}

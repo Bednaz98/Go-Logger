@@ -23,7 +23,7 @@ Published versions look like `0.1.0-main.<run_id>.<run_attempt>` on each success
 
 **Other forks:** change the `name` field in `package.json` to your GitHub username/org scope (e.g. `@you/go-logger-client`) and adjust `.npmrc` and CI `scope` before publishing.
 
-Upstream CI publishes using the repository secret **`PUBLISH_TOKEN`** as **`NODE_AUTH_TOKEN`** (not the Actions **`GITHUB_TOKEN`**).
+Upstream CI sets **`NODE_AUTH_TOKEN`** to **`PUBLISH_TOKEN`** when that secret is non-empty, otherwise to **`GITHUB_TOKEN`** (with **`packages: write`**) for same-repo GitHub Packages publish.
 
 ## Usage
 
