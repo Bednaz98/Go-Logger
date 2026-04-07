@@ -27,7 +27,7 @@ The project has **three parts**:
 | Part            | Role                                      |
 | --------------- | ----------------------------------------- |
 | **Data model**  | Unified record shape for logs + analytics |
-| **Client logger** | SDK embedded in applications; **local queue** via host **`LocalLogStore`** |
+| **Client logger** | Go SDK: **device** client (**`LocalLogStore`** + batch sync) or **server** client (direct **`IngestBatch`**, no local store) |
 | **Server**      | **Multi-tenant** **gRPC** + **HTTPS JSON** (**TLS** per **TLS and certificates**); **MCP** (**stdio** + **HTTP**, [Go MCP SDK](https://github.com/modelcontextprotocol/go-sdk)); **MCP** direct **GORM**; persistence via **GORM** |
 
 ---
@@ -201,9 +201,16 @@ One **unified record** for every event. Analytics rows use the same fields as op
 
 ## Client logger
 
-Included in a host program. The **parent application** supplies **local persistence** by implementing **`LocalLogStore`**; the SDK does not choose a database by itself (a **reference** `LocalLogStore` for SQLite may ship as a separate helper package).
+The Go SDK offers two constructions:
 
-### Parent-provided local store (`LocalLogStore`)
+| Variant | Constructor | Persistence | Upload |
+| ------- | ----------- | ----------- | ------ |
+| **Device client** | **`NewDeviceClient`** (alias **`NewClient`**) | Required **`LocalLogStore`** (outbox / local DB) | Background batch sync + **`Flush`** |
+| **Server client** | **`NewServerClient`** | **None** on the caller host | Each **`Log`** / **`Track`** calls gRPC **`IngestBatch`** immediately; RPC failure → **`("", err)`** (no log id) |
+
+Use the **device** path for laptops, mobile, or unreliable networks. Use the **server** path for backend services that talk to the logger service over the network and should not write log rows to a local database on that service.
+
+### Parent-provided local store (`LocalLogStore`) — device client only
 
 The host implements this **Go interface**. Semantics are fixed so batching, the sync loop, and retention stay consistent whether the parent uses SQLite, another DB, or files.
 
@@ -275,11 +282,12 @@ type LocalLogStore interface {
 - **`Append`:** Prefer **idempotency on `log id`** so SDK retries do not duplicate rows; otherwise return an error.
 - **`MarkSent`:** Only called after the server accepts the **entire** batch (**all-or-nothing**); update **`server_acked_at`** (or equivalent) for **all** ids in that batch together.
 - **Schema and migrations** are the **parent’s** responsibility; the repo may ship a **reference SQL** for SQLite.
-- **Construction:** e.g. **`NewClient(store LocalLogStore, opts Options)`** — **`store` is required** (non-nil). The parent owns the **`*Client`** value.
+- **Construction (device):** **`NewDeviceClient(store LocalLogStore, opts Options)`** or **`NewClient`** — **`store` is required** (non-nil). The parent owns the **`*Client`** value.
+- **Construction (server):** **`NewServerClient(opts Options)`** — no store; **`DisableRemote`** must be **`false`**; same gRPC address, TLS, and bearer options as the device client.
 
 ### Initialization (optional parameters)
 
-- **`LocalLogStore`** (required)
+- **`LocalLogStore`** (required for device client; N/A for server client)
 - **`application_name`** (tenant) for this process — included on every outbound batch and must match server expectations
 - Environment
 - Single instance per application
@@ -296,7 +304,7 @@ The **MCP** server (stdio **`cmd/mcp`** or streamable HTTPS on the main process)
 
 The SDK may expose a **single process-wide default** so call sites can use package-level **`Log` / `Track` / `Flush`** without carrying a **`*Client`**.
 
-- The **parent** still builds the client with **`NewClient`**; it then calls **`Init(client)`** to register that instance (non-nil). **`Init`** must not replace an existing default without **`Close`** on the default first (second **`Init`** returns an **`ErrAlreadyInitialized`**-style error).
+- The **parent** still builds a **device** client with **`NewDeviceClient`** / **`NewClient`**; it then calls **`Init(client)`** to register that instance (non-nil). **`Init`** applies only to **`*Client`**, not **`ServerClient`**. **`Init`** must not replace an existing default without **`Close`** on the default first (second **`Init`** returns an **`ErrAlreadyInitialized`**-style error).
 - **`Close`** on the package API shuts down the registered client and clears the default **only if** **`(*Client).Close`** succeeds; on failure the default remains for retry.
 - Package-level operations that use the default should be **serialized with respect to `Close`** on that default (e.g. hold a read lock for the duration of each **`Log` / `Track` / `Flush` / `SetAnalyticsEnabled`** so **`Close`** cannot run concurrently with them).
 

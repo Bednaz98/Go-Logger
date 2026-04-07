@@ -18,8 +18,8 @@ var ErrNotInitialized = errors.New("logger: no active default client")
 // ErrAlreadyInitialized is returned when Init is called while a default client is already set.
 var ErrAlreadyInitialized = errors.New("logger: Init already called; Close the current client first")
 
-// Init registers the application-owned client as the package default for Log, Track, Flush, and Close.
-// The parent must construct the client with NewClient and pass that value here (non-nil).
+// Init registers a device *Client (NewDeviceClient / NewClient) as the package default for Log, Track, Flush, and Close.
+// Server-side direct ingest should use NewServerClient and call its methods explicitly (no package default).
 //
 // Only one default may exist at a time; call Close before Init again. Package-level methods hold a
 // read lock for the duration of each call so Close cannot run concurrently with Log, Track,

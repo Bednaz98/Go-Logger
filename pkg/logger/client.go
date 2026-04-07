@@ -8,7 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// Options configures the client SDK.
+// Options configures device and server clients. Fields used only by the device sync loop
+// (batch sizes, poll intervals, purge) are ignored by NewServerClient.
 type Options struct {
 	ApplicationName string
 	// GRPCAddress is the remote gRPC target as host:port (e.g. localhost:5000).
@@ -61,7 +62,8 @@ func (o *Options) applyDefaults() {
 	}
 }
 
-// Client batches local records and uploads them via gRPC when DisableRemote is false.
+// Client is the device-oriented client: it appends to a LocalLogStore and uploads batches in the
+// background (or on Flush) when remote sending is enabled. Construct with NewDeviceClient or NewClient.
 type Client struct {
 	store LocalLogStore
 	opts  Options
@@ -76,28 +78,15 @@ type Client struct {
 	wg     sync.WaitGroup
 }
 
-func NewClient(store LocalLogStore, opts Options) (*Client, error) {
+// NewDeviceClient buffers logs in store and syncs to the remote LoggerService according to Options.
+func NewDeviceClient(store LocalLogStore, opts Options) (*Client, error) {
 	if store == nil {
 		return nil, errNilStore
 	}
 	opts.applyDefaults()
-	var tr *grpcTransport
-	if !opts.DisableRemote {
-		target, terr := grpcDialTarget(opts.GRPCAddress, opts.RemoteURL)
-		if terr != nil {
-			return nil, terr
-		}
-		if target == "" {
-			return nil, ErrNoRemoteTarget
-		}
-		var err error
-		tr, err = newGRPCTransport(target, opts.BearerToken, dialTLSConfig{
-			CAPEM:              opts.TLSCAPEM,
-			InsecureSkipVerify: opts.InsecureSkipVerify,
-		})
-		if err != nil {
-			return nil, err
-		}
+	tr, err := dialGRPC(opts)
+	if err != nil {
+		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &Client{
@@ -111,6 +100,29 @@ func NewClient(store LocalLogStore, opts Options) (*Client, error) {
 	c.wg.Add(1)
 	go func() { defer c.wg.Done(); c.syncLoop(ctx) }()
 	return c, nil
+}
+
+// NewClient is an alias for NewDeviceClient.
+func NewClient(store LocalLogStore, opts Options) (*Client, error) {
+	return NewDeviceClient(store, opts)
+}
+
+// dialGRPC returns nil transport when opts.DisableRemote is true.
+func dialGRPC(opts Options) (*grpcTransport, error) {
+	if opts.DisableRemote {
+		return nil, nil
+	}
+	target, err := grpcDialTarget(opts.GRPCAddress, opts.RemoteURL)
+	if err != nil {
+		return nil, err
+	}
+	if target == "" {
+		return nil, ErrNoRemoteTarget
+	}
+	return newGRPCTransport(target, opts.BearerToken, dialTLSConfig{
+		CAPEM:              opts.TLSCAPEM,
+		InsecureSkipVerify: opts.InsecureSkipVerify,
+	})
 }
 
 func (c *Client) Close() error {
@@ -130,23 +142,11 @@ func (c *Client) SetAnalyticsEnabled(on bool) {
 
 // Log records an operational log line.
 func (c *Client) Log(ctx context.Context, level, message string, metadataJSON []byte) (string, error) {
-	id := uuid.NewString()
-	rec := LocalRecord{
-		LogID:             id,
-		RecordKind:        "operational",
-		Source:            c.opts.Source,
-		SourceEnvironment: c.opts.SourceEnvironment,
-		SessionID:         c.sessionID,
-		ApplicationName:   c.opts.ApplicationName,
-		LogMessage:        message,
-		MetadataJSON:      append([]byte(nil), metadataJSON...),
-		EventTimestamp:    time.Now().UTC(),
-		LogLevel:          level,
-	}
+	rec := newOperationalRecord(c.opts, c.sessionID, level, message, metadataJSON)
 	if err := c.store.Append(ctx, []LocalRecord{rec}); err != nil {
 		return "", err
 	}
-	return id, nil
+	return rec.LogID, nil
 }
 
 // Track records an analytics event when analytics is enabled.
@@ -157,23 +157,11 @@ func (c *Client) Track(ctx context.Context, eventName string, metadataJSON []byt
 	if !on {
 		return "", nil
 	}
-	id := uuid.NewString()
-	rec := LocalRecord{
-		LogID:              id,
-		RecordKind:         "analytics",
-		AnalyticsEventName: eventName,
-		Source:             c.opts.Source,
-		SourceEnvironment:  c.opts.SourceEnvironment,
-		SessionID:          c.sessionID,
-		ApplicationName:    c.opts.ApplicationName,
-		MetadataJSON:       append([]byte(nil), metadataJSON...),
-		EventTimestamp:     time.Now().UTC(),
-		LogLevel:           "info",
-	}
+	rec := newAnalyticsRecord(c.opts, c.sessionID, eventName, metadataJSON)
 	if err := c.store.Append(ctx, []LocalRecord{rec}); err != nil {
 		return "", err
 	}
-	return id, nil
+	return rec.LogID, nil
 }
 
 // Flush attempts to upload pending records immediately.

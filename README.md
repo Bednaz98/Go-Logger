@@ -137,23 +137,46 @@ Install and `.npmrc` setup: see **[clients/ts/README.md](clients/ts/README.md)**
 
 ## Go client SDK
 
-Package `pkg/logger` implements a buffering client that writes through **`LocalLogStore`** (implemented by the host) and, when remote sending is enabled, uploads batches with gRPC **`IngestBatch`**. TLS is required toward the server when dialing: supply **`TLSCAPEM`** in **`Options`**, or set **`InsecureSkipVerify`** only for local development.
+Package `pkg/logger` provides two client styles:
 
-- **`DisableRemote`**: when `true`, the client **never** opens a gRPC connection or uploads; **`Log`** / **`Track`** still append locally (unsent rows remain in the store until you reconfigure or use a different client).
-- **`RemoteURL`**: optional; when non-empty, parsed as `host:port` or `grpc://host:port` and used as the dial target **instead of** **`GRPCAddress`**.
-- **`Init(*Client)`** does not take options — set **`Options`** on **`NewClient`** before **`Init`**.
+### Device client (`NewDeviceClient` / `NewClient`)
 
-### Constructing the client
+Buffers logs in a **`LocalLogStore`** (implemented by the host, e.g. **`sqllogstore`**) and uploads batches in the background (and on **`Flush`**) with gRPC **`IngestBatch`**. Use on devices or services that need offline durability.
 
-1. Open or build a store (for example **`sqllogstore.New`** from `pkg/sqllogstore` with GORM).
-2. Call **`logger.NewClient(store, opts)`** with non-nil **`store`** and **`Options`** (including **`ApplicationName`**; when remote is enabled, **`GRPCAddress`** or **`RemoteURL`**, plus TLS fields as above).
-3. Use **`(*Client).Log`**, **`Track`**, **`Flush`**, **`SetAnalyticsEnabled`**, and **`Close`** on the returned value, **or** register it as the package default (below).
+- **`DisableRemote`**: when `true`, no gRPC connection; **`Log`** / **`Track`** append only to the store.
+- **`RemoteURL`**: optional dial target override (`host:port` or `grpc://…`).
+- TLS: set **`TLSCAPEM`** or **`InsecureSkipVerify`** (dev only).
 
-Details, defaults for sync thresholds, and store semantics are in **[spec.md](spec.md)** (Client logger).
+1. Open or build a store (e.g. **`sqllogstore.New`** with GORM).
+2. **`logger.NewClient(store, opts)`** or **`NewDeviceClient`** with non-nil **`store`** and **`Options`** (**`ApplicationName`**, **`GRPCAddress`** or **`RemoteURL`** when remote is on, TLS, bearer token).
+3. Use **`Log`**, **`Track`**, **`Flush`**, **`SetAnalyticsEnabled`**, **`Close`**, or **`Init`** for the package default (below).
 
-### Package default (`Init`)
+### Server client (`NewServerClient`)
 
-If the rest of the app should not thread a **`*Client`** pointer everywhere, the parent can register a single instance after construction:
+Sends each **`Log`** / **`Track`** with an immediate gRPC **`IngestBatch`** — **no local store** on the calling service. Use for backend services that always reach the logger server and should not persist log rows locally.
+
+- **`DisableRemote`** must be **`false`** (default).
+- Same address, TLS, and bearer fields as the device client. Batch/sync options in **`Options`** are ignored.
+- **`Flush`** is a no-op. There is no **`Init`** for **`ServerClient`**; keep a **`*ServerClient`** on your app struct.
+- If **`IngestBatch`** fails, **`Log`** / **`Track`** return **`("", err)`** (no id until the server accepts the batch).
+
+```go
+srvLog, err := logger.NewServerClient(logger.Options{
+	ApplicationName:    "api-service",
+	GRPCAddress:        os.Getenv("LOGGER_GRPC_ADDR"),
+	BearerToken:        os.Getenv("LOGGER_TOKEN"),
+	TLSCAPEM:           caPEM,
+})
+if err != nil { /* ... */ }
+defer srvLog.Close()
+_, _ = srvLog.Log(ctx, "info", "request handled", nil)
+```
+
+Details are in **[spec.md](spec.md)** (Client logger).
+
+### Package default (`Init`, device client only)
+
+If the rest of the app should not thread a **`*Client`** pointer everywhere, register a **device** client after construction (**`ServerClient`** is not supported):
 
 - **`logger.Init(client)`** — sets the default (returns **`ErrAlreadyInitialized`** if one is already set; **`ErrNilClient`** if **`client`** is nil).
 - **`logger.Log`**, **`logger.Track`**, **`logger.Flush`**, **`logger.SetAnalyticsEnabled`** — delegate to that client (return **`ErrNotInitialized`** if **`Init`** was never called or after **`Close`** cleared the default).

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Go client SDK:** **`NewServerClient`**: sends each **`Log`** / **`Track`** via gRPC **`IngestBatch`** immediately with **no `LocalLogStore`** (backend services). On RPC failure, **`Log`** / **`Track`** return **`("", err)`** (no log id). **`NewDeviceClient`** is the explicit name for the buffering client; **`NewClient`** remains an alias. **`Init`** / package-level APIs apply only to **`*Client`** (device). **`ErrServerClientDisableRemote`** if **`NewServerClient`** is called with **`DisableRemote: true`**.
 - **Breaking — server defaults:** Default listen ports are now **5000** (gRPC), **5001** (HTTPS JSON), **5002** (MCP HTTPS), **5003** (plain HTTP JSON when `HTTP_PLAIN_LISTEN=true`). Override with **`GRPC_PORT`**, **`HTTP_PORT`**, **`MCP_HTTP_PORT`**, **`HTTP_PLAIN_PORT`**, or Docker **`server`** image **`ARG`** / **`ENV`**.
 - **Config:** **`GRPC_PORT`**, **`HTTP_PORT`**, **`MCP_HTTP_PORT`**, and **`HTTP_PLAIN_PORT`** must be integers **1–65535** when set; invalid or out-of-range values **fail startup** (no silent fallback).
 - **Security:** Bearer token checks for gRPC, HTTPS JSON, and MCP streamable HTTP use **constant-time** comparison when lengths match.
